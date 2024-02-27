@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Juego del Ahorcado</title>
+
+    <style>
+        * {
+            color: #8d4d11da;
+            -webkit-text-stroke: 0.5px rgb(255, 255, 255);
+            -text-fill-color: #8d4d11da;
+
+        }
+
+        .fuction-dibujarahorcado {
+            color: #3d963a;
+        }
+
+        body {
+            background: url('https://i.gifer.com/2M2n.gif') no-repeat center center fixed;
+            background-size: cover;
+
+        }
+
+        p {
+            color: black;
+        }
+
+        .btn-letra {
+            margin: 5px;
+            padding: 10px 15px;
+            font-size: 16px;
+            background-color: #1b2735;
+            color: #3d963a;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .btn-letra:hover {
+            background-color: #f2f2f2;
+        }
+
+        .boton-reiniciar {
+            margin: 10px 0;
+            padding: 10px 20px;
+            font-size: 18px;
+            background-color: #1b2735;
+            color: #f2f2f2;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .boton-reiniciar:hover {
+            background-color: #b8c2ba;
+        }
+
+        .lienzo-ahorcado {
+            color: #f2f2f2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 20px;
+
+
+        }
+
+        .info-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+
+        }
+    </style>
+</head>
+
+<body>
+    <h1>
+        <center>
+            <div class="juego-ahorcado">Juego del Ahorcado</div>
+        </center>
+    </h1>
+    <h1>
+        <center>
+            <div id="contenedor-palabra"></div>
+        </center>
+    </h1>
+    <br>
+    <center>
+        <div id="dibujo-ahorcado"><canvas id="lienzo-ahorcado" width="300" height="300"></canvas></div>
+    </center><br>
+    <br>
+    <center>
+        <div id="contenedor-botones"></div>
+    </center>
+    <h1>
+        <center>
+            <div id="letras-usadas">
+                <p>Letras Usadas:</p>
+            </div>
+        </center>
+    </h1>
+    <h1>
+        <center>
+            <div id="intentos-restantes">
+                <p>Intentos restantes: 7</p>
+            </div>
+        </center>
+    </h1>
+    <center><button id="boton-reiniciar">Reiniciar</button></center>
+
+    <script>
+        // banco de palabras
+        const palabras = [
+            "Contemplar",
+            "Inmersión",
+            "Signo",
+            "Francia",
+            "Turbante",
+            "Tumba",
+            "Luna",
+            "Tormenta",
+            "Detective",
+            "Lechuga",
+        ];
+
+        // inicia variables
+        const alfabeto = "abcdefghijklmnopqrstuvwxyz";
+        const contenedorBotones = document.getElementById("contenedor-botones");
+        const contenedorLetrasUsadas = document.getElementById("letras-usadas");
+        const contenedorIntentosRestantes = document.getElementById("intentos-restantes");
+        const contenedorPalabra = document.getElementById("contenedor-palabra");
+        const botonReiniciar = document.getElementById("boton-reiniciar");
+        const letrasUsadas = [];
+        const maxIntentos = 7;
+        const span = document.createElement("span");
+        const canvas = document.getElementById("lienzo-ahorcado");
+        const ctx = canvas.getContext("2d");
+        span.textContent = "Otro intento";
+        let intentosRestantes = maxIntentos;
+        let palabraSeleccionada = seleccionarPalabraAleatoria(palabras);
+        let juegoEnProgreso = false;
+
+        //se elijira una palabra ramdom de las que estan en el almacenado palabras
+        function seleccionarPalabraAleatoria(palabras) {
+            const palabrasFiltradas = palabras.filter((palabra) => palabra.length <= 15);
+            //filtro para las palabras
+            if (palabrasFiltradas.length === 0) {
+                return "";
+            }
+            const indiceAleatorio = Math.floor(Math.random() * palabrasFiltradas.length);
+            return palabrasFiltradas[indiceAleatorio];
+        }
+
+        //se genera un funcion para por cada letra del abecedario se genere un boton
+        function generarBotonesLetras() {
+            for (let letra of alfabeto) {
+                const boton = document.createElement("button");
+                boton.textContent = letra;
+                boton.className = "btn-letra";
+                contenedorBotones.appendChild(boton);
+                boton.addEventListener("click", () => manejarClickLetra(letra));
+                botonReiniciar.className = "boton-reiniciar";
+                botonReiniciar.innerHTML =
+                    '<span class="boton-reiniciar-span">' + "Otro intento" + "</span>";
+            }
+        }
+        //maneja los clicks de la app y el estado que maneja
+        function manejarClickLetra(letra) {
+            // retorna la letra
+            if (!juegoEnProgreso) {
+                return;
+            }
+            // manda a letras usadas
+            if (letrasUsadas.includes(letra)) {
+                return;
+            }
+            // actualiza la letra usada
+            letrasUsadas.push(letra);
+            actualizarLetrasUsadas();
+            if (palabraSeleccionada.includes(letra)) {
+                actualizarVisualizacionPalabra();
+            } else {
+                //actualiza intentos restantes
+                intentosRestantes--;
+                actualizarIntentosRestantes();
+            }
+            //el estado de el boton
+            comprobarEstadoJuego();
+            if (!contenedorPalabra.textContent.includes("_")) {
+                finalizarJuego(true);
+            }
+            // actualiza a la palabra que se esta armando
+            if (
+                !contenedorPalabra.textContent.includes("_") &&
+                letrasUsadas.length < palabraSeleccionada.length
+            ) {
+                finalizarJuego(true);
+            }
+        }
+        // entran las letras usadas por los botones
+        function actualizarLetrasUsadas() {
+            contenedorLetrasUsadas.textContent = `Letras usadas: ${letrasUsadas.join(", ")}`;
+        }
+        //actualiza numero de veces que te quedan
+        function actualizarIntentosRestantes() {
+            contenedorIntentosRestantes.textContent = `Intentos restantes: ${intentosRestantes}`;
+        }
+        //actualiza las palabras o barritas
+        function actualizarVisualizacionPalabra() {
+            contenedorPalabra.textContent = palabraSeleccionada
+                .split("")
+                .map((letra) => (letrasUsadas.includes(letra) ? letra : "_"))
+                .join(" ");
+        }
+        //esta de jugabilidad
+        function comprobarEstadoJuego() {
+            if (intentosRestantes === 0) {
+                dibujarAhorcado(ctx);
+                finalizarJuego(false);
+            } else {
+                dibujarAhorcado(ctx);
+            }
+        }
+        //estado botones
+        function habilitarBotonesLetras() {
+            contenedorBotones.querySelectorAll("button").forEach((boton) => {
+                boton.disabled = false;
+            });
+        }
+
+        //finaliza el juego y limpia el canva
+        function finalizarJuego(jugadorGano) {
+            if (jugadorGano) {
+                contenedorPalabra.textContent = "Perdiste";
+            } else {
+                contenedorPalabra.textContent = ` La palabra era: ${palabraSeleccionada}`;
+            }
+            // Bloquear los botones de letras
+            const botonesLetras = document.querySelectorAll(".btn-letra");
+            botonesLetras.forEach((boton) => {
+                boton.disabled = true;
+            });
+            // Dejar el botón de reiniciar habilitado
+            botonReiniciar.disabled = false;
+        }
+
+
+
+        // al presionar reiniciar juego se realiza las siguiente accion: reiniciar.
+        function reiniciarJuego() {
+            letrasUsadas.length = 0;
+            intentosRestantes = maxIntentos;
+            palabraSeleccionada = seleccionarPalabraAleatoria(palabras);
+            actualizarLetrasUsadas();
+            actualizarIntentosRestantes();
+            contenedorPalabra.textContent = palabraSeleccionada
+                .split("")
+                .map(() => "_")
+                .join(" ");
+            habilitarBotonesLetras();
+            juegoEnProgreso = true;
+            Ahorcado();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // funcion que crea botones y cambia la palabra
+        function inicializarJuego() {
+            generarBotonesLetras();
+            reiniciarJuego();
+            actualizarVisualizacionPalabra();
+        }
+        // boton reinicia el juego
+        botonReiniciar.addEventListener("click", reiniciarJuego);
+        document.addEventListener("DOMContentLoaded", () => {
+            inicializarJuego();
+        });
+
+        function dibujarAhorcado(ctx) {
+            // Dibuja el poste vertical
+            ctx.moveTo(20, 250);
+            ctx.lineTo(20, 20);
+            // Dibuja el travesaño superior
+            ctx.moveTo(20, 20);
+            ctx.lineTo(250, 20);
+            // Establece el estilo de trazo
+            ctx.strokeStyle = "white";
+            ctx.lineWidth = 5;
+            ctx.stroke();
+
+            // Dibuja la cuerda
+            if (intentosRestantes < 7) {
+                ctx.beginPath();
+                ctx.moveTo(150, 20);
+                ctx.lineTo(150, 50);
+                ctx.strokeStyle = "black";
+                ctx.lineWidth = 5;
+                ctx.stroke();
+
+                // Dibuja la cabeza
+                if (intentosRestantes < 6) {
+                    ctx.beginPath();
+                    ctx.arc(150, 85, 35, 0, Math.PI * 2, false);
+                    ctx.strokeStyle = "white";
+                    ctx.lineWidth = 5;
+                    ctx.stroke();
+                    // Dibuja el torso
+                    if (intentosRestantes < 5) {
+                        ctx.beginPath();
+                        ctx.moveTo(150, 120);
+                        ctx.lineTo(150, 200);
+                        ctx.strokeStyle = "black";
+                        ctx.lineWidth = 5;
+                        ctx.stroke();
+
+                        // Dibuja el brazo izquierdo
+                        if (intentosRestantes < 4) {
+                            ctx.beginPath();
+                            ctx.moveTo(150, 140);
+                            ctx.lineTo(120, 110);
+                            ctx.strokeStyle = "black";
+                            ctx.lineWidth = 5;
+                            ctx.stroke();
+
+                            // Dibuja el brazo derecho
+                            if (intentosRestantes < 3) {
+                                ctx.beginPath();
+                                ctx.moveTo(150, 140);
+                                ctx.lineTo(180, 110);
+                                ctx.strokeStyle = "black";
+                                ctx.lineWidth = 5;
+                                ctx.stroke();
+
+                                // Dibuja la pierna derecha
+                                if (intentosRestantes < 2) {
+                                    ctx.beginPath();
+                                    ctx.moveTo(150, 200);
+                                    ctx.lineTo(180, 240);
+                                    ctx.strokeStyle = "black";
+                                    ctx.lineWidth = 5;
+                                    ctx.stroke();
+
+                                    // Dibuja la pierna izquierda
+                                    if (intentosRestantes < 1) {
+                                        ctx.beginPath();
+                                        ctx.moveTo(150, 200);
+                                        ctx.lineTo(120, 240);
+                                        ctx.strokeStyle = "black";
+                                        ctx.lineWidth = 5;
+                                        ctx.stroke();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        function Ahorcado() {
+            ctx.beginPath();
+            ctx.moveTo(20, 20); // Mueve el lápiz a la esquina superior izquierda
+            ctx.lineTo(20, 300); // Dibuja el lado izquierdo del cuadrado
+            ctx.lineTo(250, 300); // Dibuja la parte inferior del cuadrado
+            ctx.lineTo(250, 20); // Dibuja el lado derecho del cuadrado
+            ctx.closePath(); // Cierra el cuadrado
+            ctx.fillStyle = "white"; // Establece el color de relleno en blanco
+            ctx.fill(); // Rellena el cuadrado con el color blanco
+            ctx.strokeStyle = "black"; // Establece el color del trazo en negro
+            ctx.lineWidth = 5; // Establece el grosor del trazo en 5 píxeles
+            ctx.stroke(); // Dibuja el borde del cuadrado
+        }
+
+
+
+        Ahorcado();
+
+    </script>
+</body>
+
+</html>
